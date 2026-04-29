@@ -14,7 +14,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   item: {
+    position: 'relative',
     backgroundColor: '#000',
+  },
+  cover: {
+    ...absoluteFill,
+    width: '100%',
+    height: '100%',
   },
   media: {
     ...absoluteFill,

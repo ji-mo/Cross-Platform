@@ -2,7 +2,6 @@ import VideoCommentsModal from '@/components/VideoCommentsModal';
 import VideoFeedItem from '@/components/VideoFeedItem';
 import styles from '@/styles/videoTabStyles';
 import type { VideoItem } from '@/types/videoFeed';
-import { FlashList } from '@shopify/flash-list';
 import type { FlashListProps, ListRenderItemInfo } from '@shopify/flash-list';
 import type React from 'react';
 import {
@@ -12,8 +11,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AppState, Text, useWindowDimensions, View } from 'react-native';
 import type { AppStateStatus, ViewabilityConfig } from 'react-native';
+import { AppState, Text, useWindowDimensions, View } from 'react-native';
 
 const MOCK_VIDEO_COUNT = 120;
 const VIDEO_PRELOAD_DISTANCE = 1;
@@ -29,8 +28,8 @@ function createMockVideos(): VideoItem[] {
     id: `video_${index}`,
     authorName: `Creator ${index}`,
     authorAvatar: `https://placehold.co/80x80?text=${index}`,
-    videoUrl: `https://media.example.com/video-${index}.mp4`,
-    thumbnailUrl: `https://cdn.example.com/thumb-${index}.jpg`,
+    videoUrl: `https://samplelib.com/preview/mp4/sample-5s.mp4`,
+    thumbnailUrl: `https://samplelib.com/lib/preview/mp4/sample-5s.jpg`,
     title: `Video title ${index}`,
     liked: false,
     likeCount: Math.floor(Math.random() * 5000),
@@ -66,7 +65,7 @@ export default function VideoFeedScreen(): React.JSX.Element {
   const viewabilityConfig = useMemo<ViewabilityConfig>(
     (): ViewabilityConfig => ({
       itemVisiblePercentThreshold: 80,
-      minimumViewTime: 80,
+      minimumViewTime: 300,
     }),
     [],
   );
@@ -77,17 +76,13 @@ export default function VideoFeedScreen(): React.JSX.Element {
     const firstVisible = viewableItems.find(
       (item): boolean => item.isViewable && typeof item.index === 'number',
     );
-
     if (firstVisible?.index === null || firstVisible?.index === undefined) {
       return;
     }
-
     const nextIndex = firstVisible.index;
-
     if (nextIndex === currentIndexRef.current) {
       return;
     }
-
     currentIndexRef.current = nextIndex;
     setCurrentIndex(nextIndex);
   }).current;
@@ -98,9 +93,7 @@ export default function VideoFeedScreen(): React.JSX.Element {
         if (item.id !== id) {
           return item;
         }
-
         const liked = !item.liked;
-
         return {
           ...item,
           liked,
@@ -182,7 +175,7 @@ export default function VideoFeedScreen(): React.JSX.Element {
 
   return (
     <View style={styles.container}>
-      <FlashList
+      {/* <FlashList
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -193,8 +186,17 @@ export default function VideoFeedScreen(): React.JSX.Element {
         onViewableItemsChanged={onViewableItemsChanged}
         drawDistance={screenHeight}
         extraData={extraData}
-        removeClippedSubviews
-      />
+        removeClippedSubviews={false}
+      /> */}
+      <VideoFeedItem
+          item={videos[0]}
+          itemHeight={screenHeight}
+          shouldMountVideo
+          shouldPlayVideo
+          onLike={handleLike}
+          onFollow={handleFollow}
+          onOpenComments={handleOpenComments}
+        />
 
       <VideoCommentsModal
         visible={commentVideoId !== null}

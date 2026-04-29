@@ -1,23 +1,23 @@
 import styles from '@/styles/videoTabStyles';
 import type { VideoFeedItemProps } from '@/types/videoFeed';
-import { Image } from 'expo-image';
 import type { ImageSource } from 'expo-image';
+import { Image } from 'expo-image';
 import type React from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
-import Video from 'react-native-video';
 import type {
   OnBufferData,
   OnVideoErrorData,
   ReactVideoPoster,
   ReactVideoSource,
 } from 'react-native-video';
+import Video from 'react-native-video';
 
 const VideoFeedItem = memo(function VideoFeedItem({
   item,
@@ -58,7 +58,6 @@ const VideoFeedItem = memo(function VideoFeedItem({
     [item.thumbnailUrl],
   );
   const canMountVideo = shouldMountVideo && !hasVideoError;
-  const canPlayVideo = shouldPlayVideo && videoReady;
 
   const handleVideoLoadStart = useCallback((): void => {
     setVideoReady(false);
@@ -67,6 +66,11 @@ const VideoFeedItem = memo(function VideoFeedItem({
   }, []);
 
   const handleVideoLoad = useCallback((): void => {
+    setVideoReady(true);
+    setIsBuffering(false);
+  }, []);
+
+  const handleVideoReadyForDisplay = useCallback((): void => {
     setVideoReady(true);
     setIsBuffering(false);
   }, []);
@@ -118,13 +122,14 @@ const VideoFeedItem = memo(function VideoFeedItem({
           style={styles.media}
           resizeMode="cover"
           repeat
-          paused={!canPlayVideo}
+          paused={!shouldPlayVideo}
           poster={poster}
           playInBackground={false}
           playWhenInactive={false}
           ignoreSilentSwitch="ignore"
           onLoadStart={handleVideoLoadStart}
           onLoad={handleVideoLoad}
+          onReadyForDisplay={handleVideoReadyForDisplay}
           onBuffer={handleVideoBuffer}
           onError={handleVideoError}
         />
