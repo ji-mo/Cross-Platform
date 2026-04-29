@@ -1,158 +1,206 @@
-import React, { useEffect, useState } from 'react';
+import VideoCommentsModal from '@/components/VideoCommentsModal';
+import VideoFeedItem from '@/components/VideoFeedItem';
+import styles from '@/styles/videoTabStyles';
+import type { VideoItem } from '@/types/videoFeed';
+import { FlashList } from '@shopify/flash-list';
+import type { FlashListProps, ListRenderItemInfo } from '@shopify/flash-list';
+import type React from 'react';
 import {
-  Dimensions,
-  FlatList,
-  Image,
-  Modal,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import Video from 'react-native-video';
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { AppState, Text, useWindowDimensions, View } from 'react-native';
+import type { AppStateStatus, ViewabilityConfig } from 'react-native';
 
-type VideoItem = {
-  id: string;
-  authorName: string;
-  authorAvatar: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  title: string;
-  liked: boolean;
-  likeCount: number;
-  followed: boolean;
-};
+const MOCK_VIDEO_COUNT = 120;
+const VIDEO_PRELOAD_DISTANCE = 1;
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
+interface VideoFeedExtraData {
+  currentIndex: number;
+  isAppActive: boolean;
+  screenHeight: number;
+}
 
-const mockVideos: VideoItem[] = Array.from({ length: 120 }).map((_, index) => ({
-  id: `video_${index}`,
-  authorName: `Creator ${index}`,
-  authorAvatar: `https://placehold.co/80x80?text=${index}`,
-  videoUrl: `https://media.example.com/video-${index}.mp4`,
-  thumbnailUrl: `https://cdn.example.com/thumb-${index}.jpg`,
-  title: `Video title ${index}`,
-  liked: false,
-  likeCount: Math.floor(Math.random() * 5000),
-  followed: false,
-}));
+function createMockVideos(): VideoItem[] {
+  return Array.from({ length: MOCK_VIDEO_COUNT }, (_, index): VideoItem => ({
+    id: `video_${index}`,
+    authorName: `Creator ${index}`,
+    authorAvatar: `https://placehold.co/80x80?text=${index}`,
+    videoUrl: `https://media.example.com/video-${index}.mp4`,
+    thumbnailUrl: `https://cdn.example.com/thumb-${index}.jpg`,
+    title: `Video title ${index}`,
+    liked: false,
+    likeCount: Math.floor(Math.random() * 5000),
+    followed: false,
+  }));
+}
 
-export default function VideoFeedTsb(): React.JSX.Element {
-  const [videos, setVideos] = useState(mockVideos);
-  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const [visibleVideoIds, setVisibleVideoIds] = useState<string[]>([]);
-  const [commentVisible, setCommentVisible] = useState(false);
-  const [selectedCommentVideoId, setSelectedCommentVideoId] = useState<string | null>(null);
+export default function VideoFeedScreen(): React.JSX.Element {
+  const currentIndexRef = useRef(0);
+  const { height: screenHeight } = useWindowDimensions();
 
-  useEffect((): void => {
-    console.log('Feed rendered');
-  });
+  const [videos, setVideos] = useState<VideoItem[]>(createMockVideos);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [commentVideoId, setCommentVideoId] = useState<string | null>(null);
+  const [isAppActive, setIsAppActive] = useState<boolean>(
+    (): boolean => AppState.currentState === 'active',
+  );
 
-  const toggleLike = (id: string): void => {
-    setVideos(
-      videos.map(item =>
-        item.id === id
-          ? {
-              ...item,
-              liked: !item.liked,
-              likeCount: item.liked ? item.likeCount - 1 : item.likeCount + 1,
-            }
-          : item
-      )
+  useEffect((): (() => void) => {
+    const handleAppStateChange = (nextState: AppStateStatus): void => {
+      setIsAppActive(nextState === 'active');
+    };
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
     );
-  };
 
-  const toggleFollow = (id: string): void => {
-    setVideos(
-      videos.map(item =>
+    return (): void => {
+      subscription.remove();
+    };
+  }, []);
+
+  const viewabilityConfig = useMemo<ViewabilityConfig>(
+    (): ViewabilityConfig => ({
+      itemVisiblePercentThreshold: 80,
+      minimumViewTime: 80,
+    }),
+    [],
+  );
+
+  const onViewableItemsChanged = useRef<
+    NonNullable<FlashListProps<VideoItem>['onViewableItemsChanged']>
+  >(({ viewableItems }): void => {
+    const firstVisible = viewableItems.find(
+      (item): boolean => item.isViewable && typeof item.index === 'number',
+    );
+
+    if (firstVisible?.index === null || firstVisible?.index === undefined) {
+      return;
+    }
+
+    const nextIndex = firstVisible.index;
+
+    if (nextIndex === currentIndexRef.current) {
+      return;
+    }
+
+    currentIndexRef.current = nextIndex;
+    setCurrentIndex(nextIndex);
+  }).current;
+
+  const handleLike = useCallback((id: string): void => {
+    setVideos((prev): VideoItem[] =>
+      prev.map((item): VideoItem => {
+        if (item.id !== id) {
+          return item;
+        }
+
+        const liked = !item.liked;
+
+        return {
+          ...item,
+          liked,
+          likeCount: liked
+            ? item.likeCount + 1
+            : Math.max(0, item.likeCount - 1),
+        };
+      }),
+    );
+  }, []);
+
+  const handleFollow = useCallback((id: string): void => {
+    setVideos((prev): VideoItem[] =>
+      prev.map((item): VideoItem =>
         item.id === id
           ? {
               ...item,
               followed: !item.followed,
             }
-          : item
-      )
+          : item,
+      ),
     );
-  };
+  }, []);
 
-  const openComments = (id: string): void => {
-    setSelectedCommentVideoId(id);
-    setCommentVisible(true);
-  };
+  const handleOpenComments = useCallback((id: string): void => {
+    setCommentVideoId(id);
+  }, []);
+
+  const handleCloseComments = useCallback((): void => {
+    setCommentVideoId(null);
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item, index, target }: ListRenderItemInfo<VideoItem>): React.JSX.Element => {
+      const distance = Math.abs(index - currentIndex);
+      const isCell = target === 'Cell';
+
+      return (
+        <VideoFeedItem
+          item={item}
+          itemHeight={screenHeight}
+          shouldMountVideo={isCell && distance <= VIDEO_PRELOAD_DISTANCE}
+          shouldPlayVideo={isCell && index === currentIndex && isAppActive}
+          onLike={handleLike}
+          onFollow={handleFollow}
+          onOpenComments={handleOpenComments}
+        />
+      );
+    },
+    [
+      currentIndex,
+      handleFollow,
+      handleLike,
+      handleOpenComments,
+      isAppActive,
+      screenHeight,
+    ],
+  );
+
+  const renderEmptyList = useCallback(
+    (): React.JSX.Element => (
+      <View style={[styles.emptyState, { height: screenHeight }]}>
+        <Text style={styles.emptyText}>No videos</Text>
+      </View>
+    ),
+    [screenHeight],
+  );
+
+  const keyExtractor = useCallback((item: VideoItem): string => item.id, []);
+
+  const extraData = useMemo<VideoFeedExtraData>(
+    (): VideoFeedExtraData => ({
+      currentIndex,
+      isAppActive,
+      screenHeight,
+    }),
+    [currentIndex, isAppActive, screenHeight],
+  );
 
   return (
-    <View style={{ flex: 1 }}>
-      <FlatList
+    <View style={styles.container}>
+      <FlashList
         data={videos}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListEmptyComponent={renderEmptyList}
         pagingEnabled
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={({ item }) => {
-          const isCurrent = currentVideoId === item.id;
-          const isVisible = visibleVideoIds.includes(item.id);
-
-          return (
-            <View style={{ height: SCREEN_HEIGHT, backgroundColor: '#000' }}>
-              {isVisible ? (
-                <Video
-                  source={{ uri: item.videoUrl }}
-                  style={{ width: '100%', height: '100%' }}
-                  paused={!isCurrent}
-                  repeat
-                  resizeMode="cover"
-                />
-              ) : (
-                <Image
-                  source={{ uri: item.thumbnailUrl }}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              )}
-
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: 60,
-                  left: 16,
-                  right: 16,
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 18 }}>{item.title}</Text>
-                <Text style={{ color: '#fff' }}>{item.authorName}</Text>
-
-                <TouchableOpacity onPress={() => toggleLike(item.id)}>
-                  <Text style={{ color: '#fff' }}>
-                    {item.liked ? 'Unlike' : 'Like'} 路 {item.likeCount}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => toggleFollow(item.id)}>
-                  <Text style={{ color: '#fff' }}>
-                    {item.followed ? 'Following' : 'Follow'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => openComments(item.id)}>
-                  <Text style={{ color: '#fff' }}>Comments</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        }}
-        onViewableItemsChanged={({ viewableItems }) => {
-          const ids = viewableItems.map(v => v.item.id);
-
-          setVisibleVideoIds(ids);
-          setCurrentVideoId(ids[0]);
-        }}
+        showsVerticalScrollIndicator={false}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
+        drawDistance={screenHeight}
+        extraData={extraData}
+        removeClippedSubviews
       />
 
-      <Modal visible={commentVisible} animationType="slide">
-        <View style={{ flex: 1, padding: 24 }}>
-          <Text>Comments for {selectedCommentVideoId}</Text>
-
-          <TouchableOpacity onPress={() => setCommentVisible(false)}>
-            <Text>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      <VideoCommentsModal
+        visible={commentVideoId !== null}
+        videoId={commentVideoId}
+        onClose={handleCloseComments}
+      />
     </View>
   );
 }
