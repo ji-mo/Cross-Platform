@@ -58,19 +58,23 @@ const VideoFeedItem = memo(function VideoFeedItem({
     [item.thumbnailUrl],
   );
   const canMountVideo = shouldMountVideo && !hasVideoError;
+  const shouldShowThumbnail = !canMountVideo || !videoReady;
 
   const handleVideoLoadStart = useCallback((): void => {
+    console.log('Video load start');
     setVideoReady(false);
     setIsBuffering(true);
     setHasVideoError(false);
   }, []);
 
   const handleVideoLoad = useCallback((): void => {
+    console.log('Video load end');
     setVideoReady(true);
     setIsBuffering(false);
   }, []);
 
   const handleVideoReadyForDisplay = useCallback((): void => {
+    console.log('Video ready for display');
     setVideoReady(true);
     setIsBuffering(false);
   }, []);
@@ -107,14 +111,16 @@ const VideoFeedItem = memo(function VideoFeedItem({
 
   return (
     <View style={containerStyle}>
-      <Image
-        source={thumbnailSource}
-        style={styles.media}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        priority={shouldPlayVideo ? 'high' : 'normal'}
-        recyclingKey={item.thumbnailUrl}
-      />
+      {shouldShowThumbnail && (
+        <Image
+          source={thumbnailSource}
+          style={styles.cover}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          priority={shouldPlayVideo ? 'high' : 'normal'}
+          recyclingKey={item.thumbnailUrl}
+        />
+      )}
 
       {canMountVideo && (
         <Video

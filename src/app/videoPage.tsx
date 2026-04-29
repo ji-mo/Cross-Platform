@@ -27,8 +27,8 @@ function createMockVideos(): VideoItem[] {
   return Array.from({ length: MOCK_VIDEO_COUNT }, (_, index): VideoItem => ({
     id: `video_${index}`,
     authorName: `Creator ${index}`,
-    authorAvatar: `https://placehold.co/80x80?text=${index}`,
-    videoUrl: `https://samplelib.com/preview/mp4/sample-5s.mp4`,
+    authorAvatar: `https://dummyimage.com/720x1280/000/fff&text=Sample+5s`,
+    videoUrl: `https://samplelib.com/mp4/sample-5s.mp4`,
     thumbnailUrl: `https://samplelib.com/lib/preview/mp4/sample-5s.jpg`,
     title: `Video title ${index}`,
     liked: false,
