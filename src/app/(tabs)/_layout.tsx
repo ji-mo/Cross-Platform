@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import type { ComponentProps } from 'react';
 import type React from 'react';
+import type { ComponentProps } from 'react';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -44,20 +44,6 @@ export default function TabLayout(): React.JSX.Element {
               color={color}
               focused={focused}
               name={focused ? 'home' : 'home-outline'}
-              size={size}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="video"
-        options={{
-          title: 'Video',
-          tabBarIcon: ({ color, focused, size }) => (
-            <TabBarIcon
-              color={color}
-              focused={focused}
-              name={focused ? 'play-circle' : 'play-circle-outline'}
               size={size}
             />
           ),

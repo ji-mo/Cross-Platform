@@ -2,7 +2,7 @@ import VideoCommentsModal from '@/components/VideoCommentsModal';
 import VideoFeedItem from '@/components/VideoFeedItem';
 import styles from '@/styles/videoTabStyles';
 import type { VideoItem } from '@/types/videoFeed';
-import type { FlashListProps, ListRenderItemInfo } from '@shopify/flash-list';
+import { FlashList, type FlashListProps, type ListRenderItemInfo } from '@shopify/flash-list';
 import type React from 'react';
 import {
   useCallback,
@@ -28,8 +28,8 @@ function createMockVideos(): VideoItem[] {
     id: `video_${index}`,
     authorName: `Creator ${index}`,
     authorAvatar: `https://dummyimage.com/720x1280/000/fff&text=Sample+5s`,
-    videoUrl: `https://samplelib.com/mp4/sample-5s.mp4`,
-    thumbnailUrl: `https://samplelib.com/lib/preview/mp4/sample-5s.jpg`,
+    videoUrl: `https://www.w3schools.com/html/mov_bbb.mp4`,
+    thumbnailUrl: `https://peach.blender.org/wp-content/uploads/title_anouncement.jpg`,
     title: `Video title ${index}`,
     liked: false,
     likeCount: Math.floor(Math.random() * 5000),
@@ -175,7 +175,7 @@ export default function VideoFeedScreen(): React.JSX.Element {
 
   return (
     <View style={styles.container}>
-      {/* <FlashList
+      <FlashList
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -187,16 +187,7 @@ export default function VideoFeedScreen(): React.JSX.Element {
         drawDistance={screenHeight}
         extraData={extraData}
         removeClippedSubviews={false}
-      /> */}
-      <VideoFeedItem
-          item={videos[0]}
-          itemHeight={screenHeight}
-          shouldMountVideo
-          shouldPlayVideo
-          onLike={handleLike}
-          onFollow={handleFollow}
-          onOpenComments={handleOpenComments}
-        />
+      />
 
       <VideoCommentsModal
         visible={commentVideoId !== null}

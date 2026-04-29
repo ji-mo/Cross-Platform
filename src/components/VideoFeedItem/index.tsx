@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import type {
   OnBufferData,
