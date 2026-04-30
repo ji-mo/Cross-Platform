@@ -4,17 +4,17 @@ import type { ImageSource } from 'expo-image';
 import { Image } from 'expo-image';
 import type React from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   OnBufferData,
+  OnProgressData,
   OnVideoErrorData,
-  ReactVideoPoster,
   ReactVideoSource,
 } from 'react-native-video';
 import Video from 'react-native-video';
@@ -28,6 +28,7 @@ const VideoFeedItem = memo(function VideoFeedItem({
   onFollow,
   onOpenComments,
 }: VideoFeedItemProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const [videoReady, setVideoReady] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
@@ -38,10 +39,6 @@ const VideoFeedItem = memo(function VideoFeedItem({
     setHasVideoError(false);
   }, [item.id, item.videoUrl]);
 
-  const containerStyle = useMemo<StyleProp<ViewStyle>>(
-    (): StyleProp<ViewStyle> => [styles.item, { height: itemHeight }],
-    [itemHeight],
-  );
   const thumbnailSource = useMemo<ImageSource>(
     (): ImageSource => ({ uri: item.thumbnailUrl }),
     [item.thumbnailUrl],
@@ -50,38 +47,42 @@ const VideoFeedItem = memo(function VideoFeedItem({
     (): ReactVideoSource => ({ uri: item.videoUrl }),
     [item.videoUrl],
   );
-  const poster = useMemo<ReactVideoPoster>(
-    (): ReactVideoPoster => ({
-      source: { uri: item.thumbnailUrl },
-      resizeMode: 'cover' as const,
-    }),
-    [item.thumbnailUrl],
-  );
   const canMountVideo = shouldMountVideo && !hasVideoError;
   const shouldShowThumbnail = !canMountVideo || !videoReady;
+  const overlayBottom = Math.max(60, insets.bottom + 44);
 
   const handleVideoLoadStart = useCallback((): void => {
-    console.log('Video load start');
     setVideoReady(false);
     setIsBuffering(true);
     setHasVideoError(false);
   }, []);
 
-  const handleVideoLoad = useCallback((): void => {
-    console.log('Video load end');
+  const markVideoReady = useCallback((): void => {
     setVideoReady(true);
     setIsBuffering(false);
   }, []);
 
+  const handleVideoLoad = useCallback((): void => {
+    markVideoReady();
+  }, [markVideoReady]);
+
   const handleVideoReadyForDisplay = useCallback((): void => {
-    console.log('Video ready for display');
-    setVideoReady(true);
-    setIsBuffering(false);
-  }, []);
+    markVideoReady();
+  }, [markVideoReady]);
 
   const handleVideoBuffer = useCallback((event: OnBufferData): void => {
     setIsBuffering(event.isBuffering);
   }, []);
+
+  const handleVideoProgress = useCallback(
+    (event: OnProgressData): void => {
+      if (event.currentTime < 0) {
+        return;
+      }
+      markVideoReady();
+    },
+    [markVideoReady],
+  );
 
   const handleVideoError = useCallback(
     (error: OnVideoErrorData): void => {
@@ -110,7 +111,7 @@ const VideoFeedItem = memo(function VideoFeedItem({
   }, [item.id, onOpenComments]);
 
   return (
-    <View style={containerStyle}>
+    <View style={[styles.item, { height: itemHeight }]}>
       {shouldShowThumbnail && (
         <Image
           source={thumbnailSource}
@@ -129,7 +130,6 @@ const VideoFeedItem = memo(function VideoFeedItem({
           resizeMode="cover"
           repeat
           paused={!shouldPlayVideo}
-          poster={poster}
           playInBackground={false}
           playWhenInactive={false}
           ignoreSilentSwitch="ignore"
@@ -137,17 +137,18 @@ const VideoFeedItem = memo(function VideoFeedItem({
           onLoad={handleVideoLoad}
           onReadyForDisplay={handleVideoReadyForDisplay}
           onBuffer={handleVideoBuffer}
+          onProgress={handleVideoProgress}
           onError={handleVideoError}
         />
       )}
 
       {canMountVideo && (!videoReady || isBuffering) && (
-        <View style={styles.loadingLayer}>
+        <View style={styles.loadingLayer} pointerEvents="none">
           <ActivityIndicator color="#fff" />
         </View>
       )}
 
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { bottom: overlayBottom }]}>
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.author}>{item.authorName}</Text>
 
@@ -155,6 +156,9 @@ const VideoFeedItem = memo(function VideoFeedItem({
           onPress={handleLikePress}
           hitSlop={8}
           accessibilityRole="button"
+          accessibilityLabel={`${item.liked ? 'Unlike' : 'Like'} ${
+            item.title
+          }`}
         >
           <Text style={styles.actionText}>
             {item.liked ? 'Unlike' : 'Like'} - {item.likeCount}
@@ -165,6 +169,9 @@ const VideoFeedItem = memo(function VideoFeedItem({
           onPress={handleFollowPress}
           hitSlop={8}
           accessibilityRole="button"
+          accessibilityLabel={`${item.followed ? 'Unfollow' : 'Follow'} ${
+            item.authorName
+          }`}
         >
           <Text style={styles.actionText}>
             {item.followed ? 'Following' : 'Follow'}
@@ -175,27 +182,13 @@ const VideoFeedItem = memo(function VideoFeedItem({
           onPress={handleOpenCommentsPress}
           hitSlop={8}
           accessibilityRole="button"
+          accessibilityLabel={`Open comments for ${item.title}`}
         >
           <Text style={styles.actionText}>Comments</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
-}, areVideoFeedItemPropsEqual);
-
-function areVideoFeedItemPropsEqual(
-  prevProps: VideoFeedItemProps,
-  nextProps: VideoFeedItemProps,
-): boolean {
-  return (
-    prevProps.item === nextProps.item &&
-    prevProps.itemHeight === nextProps.itemHeight &&
-    prevProps.shouldMountVideo === nextProps.shouldMountVideo &&
-    prevProps.shouldPlayVideo === nextProps.shouldPlayVideo &&
-    prevProps.onLike === nextProps.onLike &&
-    prevProps.onFollow === nextProps.onFollow &&
-    prevProps.onOpenComments === nextProps.onOpenComments
-  );
-}
+});
 
 export default VideoFeedItem;

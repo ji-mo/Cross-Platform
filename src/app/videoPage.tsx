@@ -2,7 +2,11 @@ import VideoCommentsModal from '@/components/VideoCommentsModal';
 import VideoFeedItem from '@/components/VideoFeedItem';
 import styles from '@/styles/videoTabStyles';
 import type { VideoItem } from '@/types/videoFeed';
-import { FlashList, type FlashListProps, type ListRenderItemInfo } from '@shopify/flash-list';
+import {
+  FlashList,
+  type FlashListProps,
+  type ListRenderItemInfo,
+} from '@shopify/flash-list';
 import type React from 'react';
 import {
   useCallback,
@@ -16,6 +20,10 @@ import { AppState, Text, useWindowDimensions, View } from 'react-native';
 
 const MOCK_VIDEO_COUNT = 120;
 const VIDEO_PRELOAD_DISTANCE = 1;
+const VIEWABILITY_CONFIG: ViewabilityConfig = {
+  itemVisiblePercentThreshold: 80,
+  minimumViewTime: 300,
+};
 
 interface VideoFeedExtraData {
   currentIndex: number;
@@ -35,6 +43,10 @@ function createMockVideos(): VideoItem[] {
     likeCount: Math.floor(Math.random() * 5000),
     followed: false,
   }));
+}
+
+function keyExtractor(item: VideoItem): string {
+  return item.id;
 }
 
 export default function VideoFeedScreen(): React.JSX.Element {
@@ -61,14 +73,6 @@ export default function VideoFeedScreen(): React.JSX.Element {
       subscription.remove();
     };
   }, []);
-
-  const viewabilityConfig = useMemo<ViewabilityConfig>(
-    (): ViewabilityConfig => ({
-      itemVisiblePercentThreshold: 80,
-      minimumViewTime: 300,
-    }),
-    [],
-  );
 
   const onViewableItemsChanged = useRef<
     NonNullable<FlashListProps<VideoItem>['onViewableItemsChanged']>
@@ -127,7 +131,11 @@ export default function VideoFeedScreen(): React.JSX.Element {
   }, []);
 
   const renderItem = useCallback(
-    ({ item, index, target }: ListRenderItemInfo<VideoItem>): React.JSX.Element => {
+    ({
+      item,
+      index,
+      target,
+    }: ListRenderItemInfo<VideoItem>): React.JSX.Element => {
       const distance = Math.abs(index - currentIndex);
       const isCell = target === 'Cell';
 
@@ -162,8 +170,6 @@ export default function VideoFeedScreen(): React.JSX.Element {
     [screenHeight],
   );
 
-  const keyExtractor = useCallback((item: VideoItem): string => item.id, []);
-
   const extraData = useMemo<VideoFeedExtraData>(
     (): VideoFeedExtraData => ({
       currentIndex,
@@ -182,7 +188,7 @@ export default function VideoFeedScreen(): React.JSX.Element {
         ListEmptyComponent={renderEmptyList}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        viewabilityConfig={viewabilityConfig}
+        viewabilityConfig={VIEWABILITY_CONFIG}
         onViewableItemsChanged={onViewableItemsChanged}
         drawDistance={screenHeight}
         extraData={extraData}

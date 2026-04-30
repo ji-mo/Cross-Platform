@@ -21,11 +21,8 @@ const styles = StyleSheet.create({
   cover: {
     ...absoluteFill,
     zIndex: 9,
-    width: '100%',
-    height: '100%',
   },
   media: {
-    ...absoluteFill,
     width: '100%',
     height: '100%',
   },
@@ -33,12 +30,11 @@ const styles = StyleSheet.create({
     ...absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 11,
+    zIndex: 10,
   },
   overlay: {
     position: 'absolute',
     zIndex: 10,
-    bottom: 60,
     left: 16,
     right: 16,
   },
