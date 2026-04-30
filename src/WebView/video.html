@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Detail</title>
+
+    <!--
+         Tells the browser/WebView to resolve DNS for these
+         domains immediately, in parallel with page parsing.
+         
+         Benefit: Saves 20–120ms DNS lookup per domain
+    -->
+    <link rel="dns-prefetch" href="https://cdn.example.com" />
+    <link rel="dns-prefetch" href="https://media.example.com" />
+
+    <!--
+         Goes further than dns-prefetch: completes the full
+         TCP handshake + TLS negotiation in advance so the
+         actual resource requests reuse a warm connection.
+
+         crossorigin: Signals cross-origin intent so the
+         connection can be reused by fetch/XHR too
+    -->
+    <link rel="preconnect" href="https://cdn.example.com" crossorigin />
+    <link rel="preconnect" href="https://media.example.com" crossorigin />
+
+    <!--
+         The cover image is the page's Largest Contentful
+         Paint (LCP) element. It should be fetched at the
+         highest priority as early as possible, not only
+         when the parser reaches the <img> tag.
+
+         as="image": Ensures correct priority queue
+         and cache sharing with the <img> tag below
+    -->
+    <link
+      rel="preload"
+      as="image"
+      href="https://cdn.example.com/covers/video-1.jpg"
+    />
+
+    <style>
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #000;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      .cover-image {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        display: block;
+      }
+      .video-container {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #111;
+      }
+      .video-player {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <!--
+    loading="eager": Cover is above the fold — must load
+    immediately. Combined with preload above for max speed.
+
+    decoding="async": Offloads image decoding from the
+    main thread, preventing render-blocking during decode.
+
+    width + height: Explicit dimensions allow the browser
+    to reserve the correct space before the image loads
+    → Cumulative Layout Shift (CLS) = 0
+    -->
+    <img
+      class="cover-image"
+      src="https://cdn.example.com/covers/video-1.jpg"
+      alt="Video cover"
+      width="1280"
+      height="720"
+      loading="eager"
+      decoding="async"
+    />
+
+    <!--
+    The original had no poster. The video area showed a
+    black screen until the decoder initialized — users
+    perceived this as a broken or loading page.
+
+    Using the same URL as the cover image: already cached
+    by the preload above → poster renders instantly with
+    zero additional network cost.
+
+    Default preload="auto" may cause the browser to download
+    large portions (or all) of the video before the user
+    even taps play — extremely wasteful on mobile.
+
+    preload="metadata": Fetches only the video header
+    (duration, dimensions, first frame). Tiny payload
+    (typically < 100KB) — enough to render the player UI
+    correctly while conserving mobile bandwidth.
+
+    Change to preload="auto" if instant autoplay is
+    required and bandwidth is not a concern (e.g. WiFi).
+
+    playsinline: Plays inline on iOS WebView without
+    forcing fullscreen — required for mobile WebView.
+    -->
+    <div class="video-container">
+      <video
+        class="video-player"
+        src="https://media.example.com/videos/video-1.mp4"
+        poster="https://cdn.example.com/covers/video-1.jpg"
+        preload="metadata"
+        controls
+        playsinline
+      ></video>
+    </div>
+
+  </body>
+</html>

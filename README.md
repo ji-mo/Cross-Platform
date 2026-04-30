@@ -105,6 +105,7 @@ If the video is not ready and the screen is black, the thumbnail should be retai
 There is no distinction in priority between the current video, the next video, and distant videos.
 
 ### Low priority
+
 - useEffect no-dependency array
 The `useEffect` method, which operates on an array without dependencies, carries the risk of infinite loops, pollutes logs, and impacts performance.
 
@@ -116,12 +117,66 @@ This can easily cause issues such as content flashing, black screen, or missing 
 
 
 ## Changes
-1.
+1. The entire page is componentized into functional modules.
+```
+VideoFeedItem
+VideoCommentsModal
+renderEmptyList
+```
+2. Use high-performance components and configure appropriate parameters to optimize performance.
+```
+FlashList -> ListEmptyComponent/viewabilityConfig/extraData/drawDistance
+expo Image -> cachePolicy/priority/recyclingKey
+```
 
+3. Interactive functions use `useCallback`, and resource objects use `useMemo`: This, combined with `memo` and `FlashList`, helps maintain prop stability.
 
+4. `setVideos` is now a functional update mechanism to avoid dependency on `videos` within the old closure.
+
+5. Only mount the current and adjacent videos: VIDEO_PRELOAD_DISTANCE = 1, to avoid too many videos entering the playback component's lifecycle.
+
+6. Add video loading statuses: videoReady, isBuffering, and ActivityIndicator to prevent black screens with no feedback.
+
+7. New empty state and error state components have been added as a fallback.
+
+8. Added hitSlop, accessibilityRole, and accessibilityLabel: clickable areas and accessibility features are now more complete.
+
+9. Pause playback when the app goes into the background: Control isAppActive via AppState
 
 ## Verification
+### Plan
+I will conduct comparative tests using the original and optimized versions under identical conditions.
 
+The test environment will be kept consistent: the same real device, the same batch of video data, the same network environment, and remote JS debugger disabled.
+
+Verification methods include:
+
+- Using React DevTools Profiler to observe the number of re-renders of VideoFeedItem.
+- Using Android dumpsys gfxinfo to view frame drops and frame latency during scrolling.
+- Setting timers in the video component's onLoadStart, onReadyForDisplay, onBuffer, and onError methods to record the first frame time, buffer counts, and error counts.
+- Continuously scrolling through 30-60 videos, observing for any stuttering, black screens, misplays, or continuous increases in memory usage.
+- Switching to the background and then back to the foreground to confirm that the video pause and resume logic is working correctly.
+
+### Change
+The expected changes after optimization are mainly as follows:
+
+- Reduced frame drops during scrolling: Because FlatList has been changed to FlashList, list recycling and rendering of large amounts of data are more stable.
+- Reduced number of simultaneously mounted video components: From "coarse-grained judgment of visible items" to only mounting the current item and adjacent items, memory and player pressure are reduced.
+- Reduced unnecessary re-rendering: VideoFeedItem uses memo, event functions use useCallback, and resource objects use useMemo.
+- More stable playback switching: VIEWABILITY_CONFIG limits the current video to 80% visibility and a 300ms dwell time before switching to the current video, preventing frequent playback state switching during rapid scrolling.
+- Reduced background resource consumption: When the app enters the background, isAppActive=false, and the current video will pause.
+- More controllable first frame experience: Thumbnails and loading are displayed before the video is ready, reducing the likelihood of black screens.
+- Improved error observability: Video loading failure will enter an error state and output console.warn, instead of silent failure.
+- Like/follow status updates are more reliable: setVideos(prev => ...) avoids reading old closure states during rapid, consecutive operations.
 
 
 ## Trade-offs
+The current code is, in my opinion, a demo example, and time-consuming. Real-world production scenarios have more requirements:
+
+1. Consider compatibility with iOS, Android, tablets, and other devices, including notch design and bottom status bar.
+
+2. Differentiate between scenarios; it might be a separate Stack Screen or a separate Tab. The height of components needs to be considered differently for different pages.
+
+3. For business scenarios, will future support for live streaming, playback, and even bullet comments be needed?
+
+4. Media operations, such as likes, follows, and comments, will require dynamically fetching new data after each operation?
